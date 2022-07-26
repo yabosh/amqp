@@ -20,9 +20,21 @@ import (
 // As messages are read from an AMQP queue they are passed to a function that is
 // provided when the consumer is created.
 
+// Payload represents the contents of a message retrieved from an AMQP queue.
+type Payload struct {
+	ContentType     string
+	ContentEncoding string
+	CorrelationId   string
+	Timestamp       time.Time
+	AppId           string
+	Exchange        string
+	RoutingKey      string
+	Body            []byte
+}
+
 // MessageProcessor is a type of function that is called whenever a
 // message is received from an AMQP queue.
-type MessageProcessor func(message *amqp.Delivery) error
+type MessageProcessor func(message *Payload) error
 
 // Consumer refers to a connection to an AMQP instance that reads messages.
 type Consumer struct {
@@ -119,7 +131,7 @@ func (c *Consumer) receiveLoop() {
 		case msg := <-c.messages:
 			logger.Info("Read message from queue")
 
-			if err := c.handler(&msg); err == nil {
+			if err := c.handler(c.createPayload(&msg)); err == nil {
 				msg.Ack(false)
 			} else {
 				logger.Error("AMQP Read: %s", err.Error())
@@ -152,6 +164,19 @@ func (c *Consumer) receiveLoop() {
 		case <-c.heartbeatTicker.C:
 		}
 		c.writeHeartbeat()
+	}
+}
+
+func (c *Consumer) createPayload(msg *amqp.Delivery) *Payload {
+	return &Payload{
+		ContentType:     msg.ContentType,
+		ContentEncoding: msg.ContentEncoding,
+		CorrelationId:   msg.CorrelationId,
+		Timestamp:       msg.Timestamp,
+		AppId:           msg.AppId,
+		Exchange:        msg.Exchange,
+		RoutingKey:      msg.RoutingKey,
+		Body:            msg.Body,
 	}
 }
 
