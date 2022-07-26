@@ -23,12 +23,13 @@ The following example shows how to connect to and use the AMQP library to consum
 
 ```go
 // Process each incoming message
-func ProcessMessage(message *amqp.Delivery) (err error)  {
+func ProcessMessage(message *amqp.Payload) (err error)  {
   fmt.Println(string(message.Body))
 }
 
 // Create a new consumer and start a goroutine that will continuously listen for incoming messages
-consumer = amqp.NewConsumer(broker, client.ProcessMessage, ExchangeType, AMQPQueueName, BindingKey)
+consumer = amqp.NewConsumer(broker, ExchangeType, AMQPQueueName, BindingKey)
+consumer.SetObserver(ProcessMessage)
 consumer.Start()
 
 // Block forever
