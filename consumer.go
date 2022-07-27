@@ -71,19 +71,19 @@ type consumerConfig struct {
 	exchangeName      string
 	exchangeType      string
 	queueName         string
-	queueBindingKey   string
+	queueBindingKeys  []string
 	messageConsumer   string
 	lifetime          time.Duration
 	connectionTimeout time.Duration
 }
 
 // newMessageConsumerConfig returns a new, initialized instance of ConsumerConfig
-func newMessageConsumerConfig(brokerConfig BrokerConfig, exchange string, exchangeType string, queue string, bindingKey string) *consumerConfig {
+func newMessageConsumerConfig(brokerConfig BrokerConfig, exchange string, exchangeType string, queue string, bindingKeys []string) *consumerConfig {
 	c := new(consumerConfig)
 	c.exchangeName = exchange
 	c.exchangeType = exchangeType
 	c.queueName = queue
-	c.queueBindingKey = bindingKey
+	c.queueBindingKeys = bindingKeys
 	c.messageConsumer = brokerConfig.ConsumerName
 	c.lifetime, _ = time.ParseDuration("0s") // 0s = infinite
 	c.connectionTimeout, _ = time.ParseDuration(brokerConfig.ConnectionTimeout)
@@ -93,13 +93,13 @@ func newMessageConsumerConfig(brokerConfig BrokerConfig, exchange string, exchan
 // NewConsumer creates a new, initialized instance of an AMQP message consumer using
 // the configuration information supplied in config.  New incoming AMQP messages
 // are sent to the handler function provided.
-func NewConsumer(broker BrokerConfig, exchangeType string, queueName string, bindingKey string) *Consumer {
+func NewConsumer(broker BrokerConfig, exchangeType string, queueName string, bindingKeys []string) *Consumer {
 	config := newMessageConsumerConfig(
 		broker,              // rabbit connection info
 		broker.ExchangeName, // exchange name
 		exchangeType,        // exchange type
 		queueName,           // queue name
-		bindingKey,          // queue binding key
+		bindingKeys,         // queue binding key
 	)
 
 	return &Consumer{
@@ -307,15 +307,23 @@ func (c *Consumer) ensureQueueBound() error {
 	}
 	c.queue = &q
 
-	err = c.channel.QueueBind(
-		q.Name,
-		c.config.queueBindingKey,
-		c.config.exchangeName,
-		false,
-		nil,
-	)
-	if err != nil {
-		return fmt.Errorf("[%s] failed to bind queue '%s' to exchange '%s' with key '%s': %s", c.source, q.Name, c.config.exchangeName, c.config.queueBindingKey, err)
+	return c.bindKeysToQueue(q.Name, c.config.exchangeName)
+}
+
+func (c *Consumer) bindKeysToQueue(name string, exchange string) (err error) {
+	// Bind all keys to the queue
+	for _, key := range c.config.queueBindingKeys {
+		err = c.channel.QueueBind(
+			name,
+			key,
+			exchange,
+			false,
+			nil,
+		)
+		if err != nil {
+			return fmt.Errorf("[%s] failed to bind queue '%s' to exchange '%s' with key '%#v': %s", c.source, name, exchange, c.config.queueBindingKeys, err)
+		}
+
 	}
 
 	return nil
