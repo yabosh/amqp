@@ -153,8 +153,6 @@ func (c *Consumer) receiveLoop() {
 	for {
 		select {
 		case msg := <-c.messages:
-			logger.Info("Read message from queue")
-
 			if err := c.handler(c.createPayload(&msg)); err == nil {
 				msg.Ack(false)
 			} else {
