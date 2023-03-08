@@ -333,7 +333,7 @@ func (c *Consumer) ensureQueueBound() error {
 
 	if c.config.queueTTL != nil {
 		args = make(amqp.Table)
-		args[xExpiresHeader] = c.config.queueTTL
+		args[xExpiresHeader] = *c.config.queueTTL
 	}
 
 	q, err := c.channel.QueueDeclare(
