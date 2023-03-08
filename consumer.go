@@ -76,9 +76,14 @@ type consumerConfig struct {
 	durable           bool
 	queueBindingKeys  []string
 	messageConsumer   string
+	queueTTL          *int
 	lifetime          time.Duration
 	connectionTimeout time.Duration
 }
+
+const (
+	xExpiresHeader = "x-expires"
+)
 
 // newMessageConsumerConfig returns a new, initialized instance of ConsumerConfig
 func newMessageConsumerConfig(brokerConfig BrokerConfig, exchange string, exchangeType string, queue string, bindingKeys []string) *consumerConfig {
@@ -93,6 +98,7 @@ func newMessageConsumerConfig(brokerConfig BrokerConfig, exchange string, exchan
 	c.exclusive = false
 	c.autoDelete = false
 	c.durable = true
+	c.queueTTL = nil
 	return c
 }
 
@@ -317,13 +323,20 @@ func (c *Consumer) ensureExchangeExists() error {
 }
 
 func (c *Consumer) ensureQueueBound() error {
+	var args amqp.Table
+
+	if c.config.queueTTL != nil {
+		args = make(amqp.Table)
+		args[xExpiresHeader] = c.config.queueTTL
+	}
+
 	q, err := c.channel.QueueDeclare(
 		c.config.queueName,
 		c.config.durable,
 		c.config.autoDelete,
 		c.config.exclusive,
 		false, // no-wait
-		nil,   // arguments
+		args,  // arguments
 	)
 	if err != nil {
 		return fmt.Errorf("[%s] failed to declare queue '%s': %s", c.source, c.config.queueName, err)
