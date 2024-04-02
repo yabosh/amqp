@@ -35,6 +35,7 @@ type ProducerConfig struct {
 type AMQPPayload struct {
 	RoutingKey string
 	Body       string
+	Headers    *amqp.Table
 }
 
 // NewProducer creates a new, initialized instance of AMQPPublsher
@@ -75,7 +76,7 @@ func (p *Producer) publishLoop() {
 	for {
 		select {
 		case payload := <-p.config.PublishingChannel:
-			p.publish(payload.Body, payload.RoutingKey)
+			p.publish(payload.Body, payload.RoutingKey, *payload.Headers)
 			logger.Debug("[%s] Published message to exchange %s", p.config.Source, p.config.ExchangeName)
 
 		case connErr := <-p.connectionCloseNotification:
@@ -109,14 +110,14 @@ func (p *Producer) publishLoop() {
 	}
 }
 
-func (p *Producer) publish(body string, routingKey string) (err error) {
+func (p *Producer) publish(body string, routingKey string, headers amqp.Table) (err error) {
 	if err = p.channel.Publish(
 		p.config.ExchangeName, // publish to an exchange
 		routingKey,            // routing to 0 or more queues
 		false,                 // mandatory
 		false,                 // immediate
 		amqp.Publishing{
-			Headers:         amqp.Table{},
+			Headers:         headers,
 			ContentType:     "application/json",
 			ContentEncoding: "",
 			Body:            []byte(body),
