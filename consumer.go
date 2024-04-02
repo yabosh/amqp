@@ -41,6 +41,7 @@ type Payload struct {
 	AppId           string
 	Exchange        string
 	RoutingKey      string
+	Headers         amqp.Table
 	Body            []byte
 }
 
@@ -235,6 +236,7 @@ func (c *Consumer) createPayload(msg *amqp.Delivery) *Payload {
 		AppId:           msg.AppId,
 		Exchange:        msg.Exchange,
 		RoutingKey:      msg.RoutingKey,
+		Headers:         msg.Headers,
 		Body:            msg.Body,
 	}
 }

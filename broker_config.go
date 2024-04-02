@@ -8,6 +8,7 @@ import (
 // to an AMQP host.
 type BrokerConfig struct {
 	Host              string
+	VHost             string
 	Port              string
 	User              string
 	Password          string
@@ -19,5 +20,9 @@ type BrokerConfig struct {
 // url generates an amqp url that is used internally to connect to a configured
 // AMQP host.
 func (mb BrokerConfig) url() string {
-	return fmt.Sprintf("amqp://%s:%s@%s:%s", mb.User, mb.Password, mb.Host, mb.Port)
+    vhost := mb.VHost
+    if len(vhost) > 0 {
+        vhost = "/" + vhost
+    }
+	return fmt.Sprintf("amqp://%s:%s@%s:%s%s", mb.User, mb.Password, mb.Host, mb.Port, vhost)
 }
